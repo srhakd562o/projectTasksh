@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Password Keeper</title>
+    <style>
+        .delete-icon {
+            cursor: pointer;
+            color: red;
+            margin-left: 5px;
+        }
+
+        .container {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Password Keeper</h1>
+        <div id="totalCount"></div>
+        <div>
+            <input id="searchInput" type="text" placeholder="Search by title...">
+        </div>
+    </div>
+        <form onsubmit="saveToCrud(event)">
+            <label>Title</label>
+            <input id="passTitle" type="text" name="passTitle" required/>
+            <label>Password</label>
+            <input id="password1" type="password" name="password1" required/>
+            <button type="submit">Add</button>
+        </form>
+        <ul id="listOfUser">All Password</ul>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.21.1/axios.min.js"></script>
+    <script>
+        let totalPasswords = 0;
+
+        function fetchAndDisplayUserDetails() {
+            axios.get('https://crudcrud.com/api/25a1f02a0ac44ed485e87734424791d8/appointmentData')
+                .then(response => {
+                    const userData = response.data;
+                    totalPasswords = userData.length;
+                    document.getElementById('totalCount').textContent =`Total Passwords: ${totalPasswords}`;
+                    userData.forEach(user => {
+                        showNewUserOnScreen(user);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching user details:', error);
+                });
+        }
+
+        window.addEventListener("DOMContentLoaded", fetchAndDisplayUserDetails);
+
+        function saveToCrud(event) {
+            event.preventDefault();
+            const passTitle = document.getElementById('passTitle').value;
+            const password1 = document.getElementById('password1').value;
+            const obj = {
+                passTitle,
+                password1
+            };
+
+            axios.post('https://crudcrud.com/api/25a1f02a0ac44ed485e87734424791d8/appointmentData', obj)
+                .then(response => {
+                    console.log('Object saved in the cloud:', response.data);
+                    showNewUserOnScreen(response.data);
+                    updateTotalPasswords();
+                })
+                .catch(error => {
+                    console.error('Error saving object:', error);
+                });
+        }
+
+        function updateTotalPasswords() {
+            totalPasswords++;
+            document.getElementById('totalCount').textContent =`Total Passwords: ${totalPasswords}`;
+        }
+
+        document.getElementById('searchInput').addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const listItems = document.getElementById('listOfUser').getElementsByTagName('li');
+            for (let i = 0; i < listItems.length; i++) {
+                const title = listItems[i].textContent.split('-')[0].toLowerCase();
+                if (title.includes(searchTerm)) {
+                    listItems[i].style.display = 'block';
+                } else {
+                    listItems[i].style.display = 'none';
+                }
+            }
+        });
+
+        function showNewUserOnScreen(obj){
+            const parent = document.getElementById('listOfUser');
+            const child1 = document.createElement('li');
+            child1.textContent = obj.passTitle + '-' + obj.password1;
+
+            const deleteBtn = document.createElement('span');
+            deleteBtn.textContent = 'Delete';
+            deleteBtn.className = 'delete-icon';
+            deleteBtn.addEventListener('click', function() {
+                deleteUser(obj._id, child1);
+            });
+            const editBtn = document.createElement('button');
+            editBtn.textContent = 'Edit';
+            editBtn.addEventListener('click', function() {
+                editUser(obj._id, obj.passTitle, obj.password1, child1);
+            });
+
+            child1.appendChild(deleteBtn);
+            child1.appendChild(editBtn);
+            parent.appendChild(child1);
+        }
+
+        function deleteUser(userId, listItem) {
+            axios.delete(`https://crudcrud.com/api/25a1f02a0ac44ed485e87734424791d8/appointmentData/${userId}`)
+                .then(response => {
+                    console.log('User detail deleted:', response.data);
+                    listItem.remove();
+                    totalPasswords--;
+                    document.getElementById('totalCount').textContent =`Total Passwords: ${totalPasswords}`;
+                })
+                .catch(error => {
+                    console.error('Error deleting user detail:', error);
+                });
+        }
+
+        function editUser(userId, title, password, listItem) {
+            const newTitle = prompt('Enter new title:', title);
+            const newPassword = prompt('Enter new password:', password);
+
+            if (newTitle !== null && newPassword !== null) {
+                const updatedObj = {
+                    passTitle: newTitle,
+                    password1: newPassword
+                };
+
+                axios.put(`https://crudcrud.com/api/25a1f02a0ac44ed485e87734424791d8/appointmentData/${userId}`, updatedObj)
+                .then(response => {
+                    console.log('User detail updated:', response.data);
+                    listItem.textContent = newTitle + '-' + newPassword;
+
+                    const deleteBtn = document.createElement('span');
+                    deleteBtn.textContent = 'Delete';
+                    deleteBtn.className = 'delete-icon';
+                    deleteBtn.addEventListener('click', function() {
+                        deleteUser(userId, listItem);
+                    });
+                    const editBtn = document.createElement('button');
+                    editBtn.textContent = 'Edit';
+                    editBtn.addEventListener('click', function() {
+                        editUser(userId, newTitle, newPassword, listItem);
+                    });
+
+                    listItem.appendChild(deleteBtn);
+                    listItem.appendChild(editBtn);
+                })
+                .catch(error => {
+                    console.error('Error updating user detail:', error);
+                });
+        }
+    }
+</script>
+</body>
+</html>
